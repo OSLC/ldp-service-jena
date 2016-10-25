@@ -955,15 +955,17 @@ module.exports = function(env) {
 		
 			var file = fs.readFileSync(env.services, 'utf8');
 			var services = JSON.parse(file);
+			console.log(services);
 			//readShapes(services, callback);
 			var obj = {};
 			obj.rawBody = file.toString();
-			jsonld.parse(obj, 'application/ld+json', function(err, triples){
+			console.log(obj.rawBody);
+			jsonld.parse(obj, env.ldpBase, function(err, triples){
 				if(err){
 					callback(err);
 				}
 				console.log(triples);
-				findBlankNodes("_:b0", env.ldpBase, triples, jsonld.serialize, true);
+				findBlankNodes(env.ldpBase+services["@graph"][0]["@id"], env.ldpBase, triples, jsonld.serialize, true);
 				callback(null);
 			});
 
@@ -1035,7 +1037,7 @@ module.exports = function(env) {
 			          }else if(triples[i].object.includes("ex:")){ 	// implies that there's an external file
 			          		var file = fs.readFileSync(triples[i].object);
 							obj = findBlankNodes(triples[i].object, uri, triples, serialize, first_time, callback);
-							readShapes(file, callback);
+							//readShapes(file, callback);
 							jsonld.parse(file, function(err, ex_triples){
 								if(err){
 									callback(err);
@@ -1098,6 +1100,11 @@ module.exports = function(env) {
 			first_time = false;
 			console.log("CANDIDATE: " + container);
 			db.reserveURI(container, function(err) {
+
+				if(err){
+					console.error("URI already in use");
+					return;
+				}
 				console.log("CANDIDATE: " + container + " " + err);
 				callback(err, container, first_time);
 			});
