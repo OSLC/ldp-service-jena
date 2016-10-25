@@ -143,7 +143,7 @@ exports.query = function(uri, content_type, callback) {
 
     var options = {
 
-        uri: db+"data?query="+uri.toLowerCase(),
+        uri: db+"query?query="+uri,
         method: "GET",
         headers: {
             "Accept": content_type
