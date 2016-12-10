@@ -136,32 +136,197 @@ exports.get = function(uri, content_type, callback) {
 
 };
 
-exports.query = function(uri, content_type, callback) {
+// LDP layer, shouldn't know the OSLC syntax?
 
-    console.log('db.get');
-    console.log(content_type);
+exports.query = function(ast, callback) {
 
-    var options = {
+    console.log('db.query');
 
-        uri: db+"query?query="+uri,
-        method: "GET",
-        headers: {
-            "Accept": content_type
+    console.log("Converting to SPARQL");
+
+    var node = ast;
+    var stack = new Array();
+    var var_stack = new Array();
+
+    if(node.right.val === "*"){
+
+        var uri = "SELECT ?g WHERE {GRAPH ?g { ?s ?p ?o } }"
+
+        var options = {
+
+            uri: db+"query?query="+uri,
+            method: "GET",
+            headers: {
+                "Accept": "application/sparql-results+json"
+            }
+               
+        };
+
+        request(options, function(err, ires, body){
+            console.log("REQUEST " + options.uri);
+            if(err){
+                callback(err);
+            }
+
+            console.log(body);
+            console.log("REQUEST SUCCESS");
+            callback(err, ires);
+
+        });
+
+
+    }else{
+
+        var sparql_query_select = "SELECT ?g ";
+        var sparql_query_where = "WHERE { GRAPH ?g { ";
+        var sparql_query_prefix = "";
+        var sparql_query_orderBy = "";
+
+        var found = 
+            {
+                "oslc.select": false,
+                "oslc.where": false,
+                "oslc.orderBy": false,
+                "oslc.prefix": false
+            };
+
+        while(node != null){
+
+            while(node.left != null){
+
+                stack.push(node);
+                node = node.left;
+
+            }
+
+            if(node.val === "oslc.select"){
+
+                found["oslc.where"] = false;
+                found["oslc.orderBy"] = false;
+                found["oslc.prefix"] = false;
+
+                found["oslc.select"] = true;
+                var_stack.push("?s");
+                node = node.pop().right;
+
+            }else if(node.val === "oslc.where"){
+
+                found["oslc.select"] = false;
+                found["oslc.orderBy"] = false;
+                found["oslc.prefix"] = false;
+
+                found["oslc.where"] = true;
+
+                node = stack.pop().right;
+
+            }else if(node.val === "oslc.prefix"){
+
+                found["oslc.select"] = false;
+                found["oslc.orderBy"] = false;
+                found["oslc.where"] = false;
+
+                found["oslc.prefix"] = true;
+                node = stack.pop().right;
+
+            }else if(node.val === "oslc.orderBy"){
+
+                found["oslc.select"] = false;
+                found["oslc.where"] = false;
+                found["oslc.prefix"] = false;
+
+                found["oslc.orderBy"] = true;
+
+                node = stack.pop().right;
+
+            }else if(node.val === "oslc.searchTerms"){
+
+                found["oslc.searchTerms"] = true;
+
+            }else{
+
+                if(found["oslc.prefix"]){
+                    sparql_query_prefix+="PREFIX "+node.val+": ";
+                    node = stack.pop().right;
+                    sparql_query_prefix+=node.val+" ";
+                }
+
+                if(found["oslc.orderBy"]){
+                    if(node.val.charAt(0) === '-'){
+                        sparql_query_orderBy += "DESC(?"+node.val.substring(1, node.val.length).replace(':','_') + ") ";
+                    }else if(node.val.charAt(0) === '+'){
+                        sparql_query_orderBy += "ASC(?"+node.val.substring(1, node.val.length).replace(':','_') + ") ";
+                    }else{
+                        sparql_orderBy += "?"+query.substring(index, i).replace(':','_')+" ";
+                    }
+
+                    node = stack.pop().right;
+                }
+
+                if(found["oslc.select"]){
+
+                    sparql_query_select+="?"+node.val.replace(':','_')+" ";
+                    sparql_query_where += var_stack[stack.length-1]+ " " + node.val + " ?" + node.val.replace(':', '_') + " . ";
+                    var new_var = node.val.replace(':','_');
+                    node = stack.pop();
+
+                    /*
+                        if(node.val === '{'){
+                            var_stack.push(new_var);
+                        }
+
+                        if(node.val === '}'){
+                            if(var_stack[var_stack.length-1] !== "?s"){
+                                var_stack.pop();    
+                            }else{
+                                callback("Syntax Error");
+                            }
+                        }
+                    */
+
+                    node = node.right;
+                    
+                }
+
+                if(found["oslc.where"]){
+
+                    sparql_query_where+="?s " + node.val + " ";
+                    node = stack.pop(); // Check if there is a rquired filter
+                    sparql_query_where+=node.right.val + " . ";
+                    node = stack.pop().right;
+
+                    // DOES NOT consider filters
+
+                }
+
+            }
+
         }
-           
-    };
 
-    request(options, function(err, ires, body){
-        console.log("REQUEST " + options.uri);
-        if(err){
-            callback(err);
-        }
+        uri = sparql_query_prefix+sparql_query_select+sparql_query_where+sparql_query_orderBy;
 
-        console.log(body);
-        console.log("REQUEST SUCCESS");
-        callback(err, ires);
+        var options = {
 
-    });
+            uri: db+"query?query="+uri,
+            method: "GET",
+            headers: {
+                "Accept": "application/sparql-results+json"
+            }
+               
+        };
+
+        request(options, function(err, ires, body){
+            console.log("REQUEST " + options.uri);
+            if(err){
+                callback(err);
+            }
+
+            console.log(body);
+            console.log("REQUEST SUCCESS");
+            callback(err, ires);
+
+        });
+
+    }
 
 };
 
