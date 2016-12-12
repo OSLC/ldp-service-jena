@@ -28,7 +28,7 @@ var db = "";
 
 exports.init = function(env, callback) {
 
-	db = env.JenaURL;
+	db = env.URL;
 
 	callback();
 	
@@ -138,7 +138,7 @@ exports.get = function(uri, content_type, callback) {
 
 // LDP layer, shouldn't know the OSLC syntax?
 
-exports.query = function(ast, callback) {
+exports.query = function(ast, base, callback) {
 
     console.log('db.query');
 
@@ -190,7 +190,7 @@ exports.query = function(ast, callback) {
                 "oslc.prefix": false
             };
 
-        while(node != null){
+        while(node.left != null && node.right != null){
 
             while(node.left != null){
 
@@ -248,6 +248,7 @@ exports.query = function(ast, callback) {
                     sparql_query_prefix+="PREFIX "+node.val+": ";
                     node = stack.pop().right;
                     sparql_query_prefix+=node.val+" ";
+                    node = stack.pop().right;
                 }
 
                 if(found["oslc.orderBy"]){
@@ -290,9 +291,11 @@ exports.query = function(ast, callback) {
                 if(found["oslc.where"]){
 
                     sparql_query_where+="?s " + node.val + " ";
-                    node = stack.pop(); // Check if there is a rquired filter
+                    node = stack.pop();
                     sparql_query_where+=node.right.val + " . ";
-                    node = stack.pop().right;
+
+                    // node = stack.pop().right;
+                    node = node.right;
 
                     // DOES NOT consider filters
 
@@ -302,7 +305,7 @@ exports.query = function(ast, callback) {
 
         }
 
-        uri = sparql_query_prefix+sparql_query_select+sparql_query_where+sparql_query_orderBy;
+        uri = sparql_query_prefix+sparql_query_select+sparql_query_where+sparql_query_orderBy + "} }";
 
         var options = {
 
@@ -322,8 +325,27 @@ exports.query = function(ast, callback) {
 
             console.log(body);
             console.log("REQUEST SUCCESS");
-            callback(err, ires);
 
+            var triples = [];
+
+            body = JSON.parse(body);
+            if(body["results"]["bindings"].length === 0){
+                console.log("No resources found");
+                callback(err, ires);
+            }else{
+
+                for(var i = 0; i < JSON.parse(body)["results"]["bindings"].length; i++){
+                    triples.push({"subject": base, "predicate": rdf.resource, "object": body["results"]["bindings"][i]["uri"]});
+                }
+
+                jsonld.serialize(triples, function(err, result){
+                    ires.body = result;
+                    callback(err, ires);
+                });
+
+            }
+            
+            
         });
 
     }
