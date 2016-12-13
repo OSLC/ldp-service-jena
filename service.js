@@ -822,7 +822,7 @@ var ldpRoutes = function(db, env) {
 
 	// generates and reserves a unique URI with base URI 'container'
 	function uniqueURI(container, callback) {
-		var candidate = addPath(container, 'res' + Date.now());
+		var candidate = addPath(container, env.resources + 'res' + Date.now());
 		db.reserveURI(candidate, function(err) {
 			callback(err, candidate);
 		});
