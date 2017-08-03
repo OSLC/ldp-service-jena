@@ -20,13 +20,13 @@
 
 var express = require('express');
 var appBase = undefined;
-var rdflib = require('./rdflib');
+var rdflib = require('rdflib');
 var http = require('http');
 var https = require('https');
 var fs = require('fs');
 
 /*
- * Middleware to create the full URI for the request for use in 
+ * Middleware to create the full URI for the request for use in
  * JSON-LD and MongoDB identifiers.
  */
 var fullURL = function(req, res, next) {
@@ -34,7 +34,7 @@ var fullURL = function(req, res, next) {
 	next();
 }
 
-/* 
+/*
  * Middleware to create a UTF8 encoded copy of the original request body
  * used in JSON and N3 parsers.
  */
@@ -127,7 +127,7 @@ var ldpRoutes = function(db, env) {
 				'ETag': eTag,
 				'Content-Type': 'application/json+ld'
 			});
-					
+
 			if (includeBody) {
 				res.end(new Buffer(ires.body), 'utf-8');
 			} else {
@@ -174,9 +174,9 @@ var ldpRoutes = function(db, env) {
 					res.sendStatus(500);
 					return;
 				}
-				
+
 				parse(req, loc, function(err, triples) {
-					
+
 					if (err) {
 						// allow the URI to be used again
 						db.releaseURI(loc);
@@ -299,15 +299,15 @@ var ldpRoutes = function(db, env) {
 
 			res.sendStatus(204);
 		});
-		
-	
+
+
 	}
 
 	resource.put(function(req, res, next) {
 		console.log('PUT ' + req.path);
 
 		var content_type, parse, serialize;
-		
+
 		if (req.is(media.turtle)) {
 			parse = turtle.parse;
 			serialize = turtle.serialize;
@@ -335,7 +335,7 @@ var ldpRoutes = function(db, env) {
 				post(req, res);
 			}
 		});
-	
+
 	});
 
 	// More difficult to change because there are additional elements that have to change
@@ -347,7 +347,7 @@ var ldpRoutes = function(db, env) {
 	});
 
 	function addToContainer(req, loc, container) {
-		
+
 		var parse, serialize;
 
 		var content_type;
@@ -478,7 +478,7 @@ var ldpRoutes = function(db, env) {
 
 		// Want to find the container that has the resource and delete
 		// The triple with the containment
-		
+
 		// What if there's only one resource in the container?
 		// Has to delete the #contains triple as well
 
@@ -735,17 +735,17 @@ var ldpRoutes = function(db, env) {
 				res.links(
 				{
 					type: document.interactionModel
-			
+
 				});
 			}else{
 				res.links(
 				{
 					type: (document.includes(ldp.BasicContainer)) ? ldp.BasicContainer : ldp.DirectContainer
-			
+
 				});
 
 			}
-		
+
 			allow += ',POST';
 			res.set('Accept-Post', media.turtle + ',' + media.jsonld + ',' + media.json);
 		} else {
@@ -932,11 +932,11 @@ module.exports = function(env) {
 		}
 
 		// create root container if it doesn't exist
-		
+
 	});
 	return ldpRoutes(db, env);
 
-	
+
 
 }
 

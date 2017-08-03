@@ -10,7 +10,8 @@
     "express": "~4.13.4",
     "n3": "~0.4.5",
     "jsonld": "~0.4.2",
-    "request": "2.79.0"
+    "request": "2.79.0",
+    "rdflib": "OSLC/rdflib.js#v0.7.1-oslc"
   },
   "engines": {
     "node": "~5.1.0"
