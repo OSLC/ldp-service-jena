@@ -51,11 +51,12 @@
 module.exports = (function(storage_services) {
 
 var ldp = require('./vocab/ldp.js') // LDP vocabulary
+var rdflib = require('rdflib')
 var request = require('request')
 var db
 
 storage_services.init = function(env, callback) {
-	db = env.JenaURL
+	db = env.jenaURL
 	callback()
 }
 
@@ -72,7 +73,7 @@ storage_services.reserveURI = function(uri, callback) {
         body: null
     }   
     request(options, function(err, ires, body) {
-    	callback(err, ires);
+    	callback(err, ires)
     })
 }
 
@@ -86,21 +87,28 @@ storage_services.releaseURI = function(uri) {
     })
 }
 
-storage_services.get = function(uri, callback) {
+storage_services.read = function(uri, callback) {
     var options = {
         uri: db+"data?graph="+uri.toLowerCase(),
         method: "GET",
         headers: {
-            "Accept": content_type
+            "Accept": "text/turtle"
         }          
     }
     request(options, function(err, ires, body) {
-        console.log("REQUEST " + options.uri)
-        callback(err, ires);
+        if (err || ires.statusCode !== 200) {
+            callback(ires.statusCode)
+            return
+        }
+        // parse the response for the KB
+        kb = new rdflib.IndexedFormula()
+        rdflib.parse(body, kb, uri, 'text/turtle', function(err, kb) {    
+            callback(err, kb)
+        }) 
     })
 }
 
-storage_services.put = function(doc, callback) {
+storage_services.update = function(doc, callback) {
 	var options = {
         uri: db+"data?graph="+uri.toLowerCase(),
         method: "PUT",
@@ -137,12 +145,11 @@ storage_services.createMembershipResource = function(document, callback) {
 }
 
 storage_services.drop = function(callback) {
-    throw "storage method drop(callback) not implemented"
 }
 
 
 exports.query = function(ast, base, callback) {
-	// convert to SPARQL and execute
+	// convert OSLC query to SPARQL and execute
     var node = ast
     var stack = new Array()
     var var_stack = new Array()

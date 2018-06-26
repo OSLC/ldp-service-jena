@@ -7,14 +7,11 @@
   "author": "Jim Amsden",
   "contributors": "Neil Davis",
   "dependencies": {
-    "express": "~4.16.3",
-    "n3": "~1.0.0-alpha",
-    "jsonld": "~1.0.1",
     "request": "2.85.0",
-    "rdflib": ">=0.16.8"
+    "rdflib": "^0.17.0"
   },
   "engines": {
-    "node": "~5.1.0"
+    "node": "~8.11.1"
   },
   "repository": {
     "type": "git",
