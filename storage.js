@@ -97,18 +97,20 @@ storage_services.read = function(uri, callback) {
     }
     request(options, function(err, ires, body) {
         if (err || ires.statusCode !== 200) {
-            callback(ires.statusCode)
+            callback(err)
             return
         }
         // parse the response for the KB
+        err = null
         kb = new rdflib.IndexedFormula()
-        rdflib.parse(body, kb, uri, 'text/turtle', function(err, kb) {    
+        rdflib.parse(body, kb, uri, 'text/turtle', function(err, kb) {
             callback(err, kb)
         }) 
     })
 }
 
-storage_services.update = function(doc, callback) {
+storage_services.update = function(resource, callback) {
+    var doc = rdflib.serialize
 	var options = {
         uri: db+"data?graph="+uri.toLowerCase(),
         method: "PUT",
@@ -136,8 +138,24 @@ storage_services.findContainer = function(uri, callback) {
 	throw "storage method fincContainer(uri, callback) not implemented"
 }
 
-storage_services.getContainment = function(uri, callback) {
-	throw "storage method getContainment(uri, callback) not implemented"
+/* Get the membership triples for a DirectContainer */
+storage_services.getContainment = function(container, callback) {
+    var options = {
+        uri: db+"sparql",
+        method: "POST",
+        headers: {
+            "Content-Type": "application/sparql-query",
+            "Accept": "application/sparql-results+json"
+        },
+        body: "SELECT ?member FROM <"+container.membershipResource+"> WHERE {<"+container.membershipResource+"> <"+container.hasMemberRelation+"> ?member .}"          
+    }
+    request(options, function(err, ires, body) {
+        if (err || ires.statusCode !== 200) {
+            callback(err)
+            return
+        }
+        callback(err, JSON.parse(body).results.bindings)
+    })
 }
 
 storage_services.createMembershipResource = function(document, callback) {
