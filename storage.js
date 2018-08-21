@@ -55,6 +55,12 @@ var rdflib = require('rdflib')
 var request = require('request')
 var db
 
+// Some convenient namespaces
+var RDF = rdflib.Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+var RDFS = rdflib.Namespace("http://www.w3.org/2000/01/rdf-schema#")
+var LDP = rdflib.Namespace('http://www.w3.org/ns/ldp#')
+
+
 storage_services.init = function(env, callback) {
 	db = env.jenaURL
 	callback()
@@ -102,9 +108,22 @@ storage_services.read = function(uri, callback) {
         }
         // parse the response for the KB
         err = null
-        kb = new rdflib.IndexedFormula()
-        rdflib.parse(body, kb, uri, 'text/turtle', function(err, kb) {
-            callback(err, kb)
+        document = new rdflib.IndexedFormula()
+        rdflib.parse(body, document, uri, 'text/turtle', function(err, document) {
+            // set the interaction model
+            var interactionModel = null
+            document.uri = uri // The container URL
+            var uriSym = document.sym(uri)
+            if (document.statementsMatching(uriSym, RDF('type'), LDP('BasicContainer')).length !==0) interactionModel = LDP('BasicContainer').value
+            if (document.statementsMatching(uriSym, RDF('type'), LDP('DirectContainer')).length !==0) interactionModel = LDP('DirectContainer').value
+            document.interactionModel = interactionModel
+            if (document.interactionModel === ldp.DirectContainer) {
+                var statement = document.any(uriSym, LDP("membershipResource"))
+                if (statement) document.membershipResource = statement.value
+                statement = document.any(uriSym, LDP("hasMemberRelation"))
+                if (statement) document.hasMemberRelation = statement.value
+            }
+            callback(err, document)
         }) 
     })
 }
@@ -139,7 +158,7 @@ storage_services.findContainer = function(uri, callback) {
 }
 
 /* Get the membership triples for a DirectContainer */
-storage_services.getContainment = function(container, callback) {
+storage_services.getMembershipTriples = function(container, callback) {
     var options = {
         uri: db+"sparql",
         method: "POST",
