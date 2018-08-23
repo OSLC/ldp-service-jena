@@ -103,13 +103,14 @@ storage_services.read = function(uri, callback) {
     }
     request(options, function(err, ires, body) {
         if (err || ires.statusCode !== 200) {
-            callback(err)
+            callback(ires.statusCode)
             return
         }
         // parse the response for the KB
         err = null
         document = new rdflib.IndexedFormula()
         rdflib.parse(body, document, uri, 'text/turtle', function(err, document) {
+            if (err) callback(500)
             // set the interaction model
             var interactionModel = null
             document.uri = uri // The container URL
@@ -123,29 +124,38 @@ storage_services.read = function(uri, callback) {
                 statement = document.any(uriSym, LDP("hasMemberRelation"))
                 if (statement) document.hasMemberRelation = statement.value
             }
-            callback(err, document)
+            let statusCode = 200
+            if (err) statusCode = 500
+            callback(statusCode, document)
         }) 
     })
 }
 
 storage_services.update = function(resource, callback) {
-    var doc = rdflib.serialize
-	var options = {
-        uri: db+"data?graph="+uri.toLowerCase(),
-        method: "PUT",
-        headers: {
-         	'Content-Type': content_type
-        },
-        body: doc
-    }
-    request(options, function(err, ires, body) {
-    	callback(err, ires);
+    rdflib.serialize(resource.sym(resource.uri), resource, "none:", "text/turtle", function(err, content) {
+    	var options = {
+            uri: db+"data?graph="+resource.uri.toLowerCase(),
+            method: "PUT",
+            headers: {
+             	'Content-Type': 'text/turtle'
+            },
+            body: content
+        }
+        request(options, function(err, ires, body) {
+            let statusCode = 200
+            if (err) {
+                statusCode = 500
+            } else {
+                statusCode = ires.statusCode
+            }
+        	callback(statusCode);
+        })
     })
 }
 
 storage_services.remove = function(uri, callback) {
 	var options = {
-        uri: db+"update?graph="+uri.toLowerCase(),
+        uri: db+"data?graph="+uri.toLowerCase(),
         method: "DELETE",
     }
     request(options, function(err, ires, body) {
@@ -177,9 +187,6 @@ storage_services.getMembershipTriples = function(container, callback) {
     })
 }
 
-storage_services.createMembershipResource = function(document, callback) {
-	throw "storage method createMembershipResource(document, callback) not implemented"
-}
 
 storage_services.drop = function(callback) {
 }
