@@ -1,14 +1,15 @@
 {
   "name": "ldp-service-jena",
-  "version": "0.0.4",
+  "version": "1.0.0",
   "description": "An Express middleware for LDP that uses Jena for persistence of JSON-LD resources",
   "license": "Apache-2.0",
   "main": "storage.js",
   "author": "Jim Amsden",
   "contributors": "Neil Davis",
   "dependencies": {
-    "request": "2.87.0",
-    "rdflib": "^0.17.0"
+    "request": "2.88.0",
+    "rdflib": "^0.19.1",
+    "ldp-service": "~1.0.0"
   },
   "engines": {
     "node": "~8.11.1"

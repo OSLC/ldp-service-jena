@@ -18,37 +18,19 @@
 /*
  * storage.js implements the abstract ldp-service/storage.js module by
  * storing RDF graphs in Apache Jena. Each document representations
- * an RDF graph. Documents have the properties below. The 'triples'
- * property is the RDF. Other properties are metadata.
+ * an RDF graph.
  *
  * This implementation delegates all the database requests to Fuesiki 
  * using the JenaURL from the env parameter
- *
- * All documents:
- *
- *   name - the URI of the graph
- *   interactionModel - the URI indicating the LDP interaction model of the resource
- *   container - the container for this resource
- *   deleted - boolean indicating if the resource has been deleted (to avoid reusing URIs)
- *   triples - an array of RDF triples in N3.js format
- *
- * Direct containers:
- *
- *   membershipResource - the ldp:membershipResource property
- *   hasMemberRelation - the ldp:hasMemberRelation property
- *   isMemberOfRelation - the ldp:isMemberOfRelation property
- *
- * Membership resources (resources in a container):
- *
- *   membershipResourceFor - the associated direct container (always 1:1)
- *
- * Rather than storing a link to all of its members in the container,
- * we have a property in each resource that points back to its
- * container. On a container GET, we query for a container's resources
- * and mix in containment triples.
+ * 
+ * env configuration parameters are:
+ *  * env.jenaURL - the URL of the Fuseki data source
  */
 
-module.exports = (function(storage_services) {
+// The abstract storage services this module instantiates
+var storage_services = require('ldp-service').storageService;
+
+module.exports = storage_services;
 
 var ldp = require('./vocab/ldp.js') // LDP vocabulary
 var rdflib = require('rdflib')
@@ -62,7 +44,7 @@ var LDP = rdflib.Namespace('http://www.w3.org/ns/ldp#')
 
 
 storage_services.init = function(env, callback) {
-  db = env.config.jenaURL
+  db = env.jenaURL
   callback()
 }
 
@@ -80,6 +62,7 @@ storage_services.reserveURI = function(uri, callback) {
   }
   request(options, function(err, ires, body) {
     if (err) {
+      console.log(err.stack)
       callback(500)
       return
     }
@@ -107,6 +90,7 @@ storage_services.read = function(uri, callback) {
   }
   request(options, function(err, ires, body) {
     if (err) {
+      console.log(err.stack)
       callback(500)
       return
     } else if (ires.statusCode != 200) {
@@ -117,7 +101,8 @@ storage_services.read = function(uri, callback) {
     document = new rdflib.IndexedFormula()
     rdflib.parse(body, document, uri, 'text/turtle', function(err, document) {
       if (err) {
-        callback(500)
+        console.log(err.stack)
+        callback(ß)
         return
       }
       // set the interaction model
@@ -141,6 +126,7 @@ storage_services.read = function(uri, callback) {
 storage_services.update = function(resource, callback) {
   rdflib.serialize(resource.sym(resource.uri), resource, "none:", "text/turtle", function(err, content) {
     if (err) {
+      console.log(err.stack)
       callback(500)
       return
     }
@@ -154,6 +140,7 @@ storage_services.update = function(resource, callback) {
     }
     request(options, function(err, ires, body) {
       if (err) {
+        console.log(err.stack)
         callback(500)
         return
       }
@@ -204,6 +191,7 @@ storage_services.remove = function(uri, callback) {
   }
   request(options, function(err, ires, body) {
     if (err) {
+      console.log(err.stack)
       callback(500)
       return
     }
@@ -224,9 +212,10 @@ storage_services.getMembershipTriples = function(container, callback) {
   }
   request(options, function(err, ires, body) {
     if (err) {
-      callback(500)
+      console.error(`Error geting membership triples: ${err}`);
+      callback(500);
       return
-    } else if (ires.statusCode != 200) {
+    } else if (ires.statusCode !== 200) {
       callback(ires.statusCode)
       return
     }
@@ -239,7 +228,7 @@ storage_services.drop = function(callback) {
 }
 
 
-exports.query = function(ast, base, callback) {
+storage_services.query = function(ast, base, callback) {
   // convert OSLC query to SPARQL and execute
   var node = ast
   var stack = new Array()
@@ -395,4 +384,3 @@ exports.query = function(ast, base, callback) {
     })
   }
 }
-})
