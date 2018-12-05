@@ -1,23 +1,21 @@
 {
-  "name": "ldp-service",
-  "version": "0.0.4",
-  "description": "An Express middleware for LDP that uses MongoDB for persistence of JSON-LD resources",
+  "name": "ldp-service-jena",
+  "version": "1.0.0",
+  "description": "An Express middleware for LDP that uses Jena for persistence of JSON-LD resources",
   "license": "Apache-2.0",
-  "main": "service.js",
-  "author": "Sam Padgett",
-  "contributors": "Jim Amsden <jamsden@us.ibm.com>",
+  "main": "storage.js",
+  "author": "Jim Amsden",
+  "contributors": "Neil Davis",
   "dependencies": {
-    "express": "~4.13.4",
-    "n3": "~0.4.5",
-    "jsonld": "~0.4.2",
-    "request": "2.79.0",
-    "rdflib": "https://github.com/OSLC/rdflib.js.git#d454ed0b15860cb99ee2d935d2e688bad98bc1ab"
+    "request": "2.88.0",
+    "rdflib": "^0.19.1",
+    "ldp-service": "~1.0.0"
   },
   "engines": {
-    "node": "~5.1.0"
+    "node": "~8.11.1"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/OSLC/ldp-server.git"
+    "url": "https://github.com/OSLC/ldp-service-jena.git"
   }
 }
