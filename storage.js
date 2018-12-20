@@ -102,7 +102,7 @@ storage_services.read = function(uri, callback) {
     rdflib.parse(body, document, uri, 'text/turtle', function(err, document) {
       if (err) {
         console.log(err.stack)
-        callback(ß)
+        callback(err)
         return
       }
       // set the interaction model
