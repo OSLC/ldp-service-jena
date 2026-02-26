@@ -1,18 +1,33 @@
 {
   "name": "ldp-service-jena",
-  "version": "1.0.0",
-  "description": "An Express middleware for LDP that uses Jena for persistence of JSON-LD resources",
+  "version": "2.0.0",
+  "description": "StorageService implementation using Apache Jena/Fuseki",
   "license": "Apache-2.0",
-  "main": "storage.js",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
   "author": "Jim Amsden",
   "contributors": "Neil Davis",
   "dependencies": {
-    "request": "2.88.0",
-    "rdflib": "^0.19.1",
-    "ldp-service": "~1.0.0"
+    "rdflib": "^2.2.35",
+    "storage-service": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
   },
   "engines": {
-    "node": "~10.6.0"
+    "node": "^22.11.0"
   },
   "repository": {
     "type": "git",
