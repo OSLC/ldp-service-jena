@@ -169,7 +169,7 @@ export class JenaStorageService implements StorageService {
   async getMembershipTriples(
     container: LdpDocument
   ): Promise<{ status: number; members: MemberBinding[] | null }> {
-    const sparql = `SELECT ?member FROM <${container.membershipResource}> WHERE {<${container.membershipResource}> <${container.hasMemberRelation}> ?member .}`;
+    const sparql = `SELECT ?member WHERE {<${container.membershipResource}> <${container.hasMemberRelation}> ?member .}`;
     const res = await fetch(`${this.jenaURL}sparql`, {
       method: 'POST',
       headers: {
@@ -182,6 +182,96 @@ export class JenaStorageService implements StorageService {
 
     const body = await res.json() as { results: { bindings: MemberBinding[] } };
     return { status: res.status, members: body.results.bindings };
+  }
+
+  async constructQuery(sparql: string): Promise<{ status: number; results: rdflib.IndexedFormula | null }> {
+    const res = await fetch(`${this.jenaURL}sparql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/sparql-query',
+        Accept: 'text/turtle',
+      },
+      body: sparql,
+    });
+    if (res.status !== 200) return { status: res.status, results: null };
+
+    const body = (await res.text()).replace(/^PREFIX\s+(\S+)\s+(<[^>]+>)/gm, '@prefix $1 $2 .');
+    const results = rdflib.graph();
+    await parseRdf(body, results, 'urn:query-results', 'text/turtle');
+    return { status: res.status, results };
+  }
+
+  async exportDataset(format: 'trig' | 'turtle'): Promise<string> {
+    const accept = format === 'trig' ? 'application/trig' : 'text/turtle';
+    const endpoint = format === 'trig' ? `${this.jenaURL}data` : `${this.jenaURL}data?default`;
+    const res = await fetch(endpoint, {
+      method: 'GET',
+      headers: { Accept: accept },
+    });
+    if (!res.ok) throw new Error(`Export failed with status ${res.status}`);
+    return res.text();
+  }
+
+  async importDataset(data: string, format: 'trig' | 'turtle'): Promise<void> {
+    if (format === 'trig') {
+      const res = await fetch(`${this.jenaURL}data`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/trig' },
+        body: data,
+      });
+      if (!res.ok) throw new Error(`TriG import failed with status ${res.status}`);
+      return;
+    }
+
+    // Turtle: parse and load each URI subject's CBD into its own named graph
+    const graph = rdflib.graph();
+    await parseRdf(data, graph, 'urn:import', 'text/turtle');
+
+    // Group triples by URI subject
+    const resourceMap = new Map<string, rdflib.Statement[]>();
+    for (const st of graph.statements) {
+      if (st.subject.termType !== 'NamedNode') continue;
+      const uri = st.subject.value;
+      if (!resourceMap.has(uri)) resourceMap.set(uri, []);
+      resourceMap.get(uri)!.push(st);
+    }
+
+    // Collect blank node triples reachable from each resource (CBD)
+    const blankNodeOwnership = new Map<string, string>();
+    for (const [uri, stmts] of resourceMap) {
+      const queue = stmts
+        .filter(st => st.object.termType === 'BlankNode')
+        .map(st => st.object.value);
+      while (queue.length > 0) {
+        const bnId = queue.pop()!;
+        if (blankNodeOwnership.has(bnId)) continue;
+        blankNodeOwnership.set(bnId, uri);
+        for (const st of graph.statementsMatching(rdflib.blankNode(bnId))) {
+          if (st.object.termType === 'BlankNode') queue.push(st.object.value);
+        }
+      }
+    }
+
+    // Add blank node triples to their owning resource
+    for (const st of graph.statements) {
+      if (st.subject.termType !== 'BlankNode') continue;
+      const owner = blankNodeOwnership.get(st.subject.value);
+      if (owner && resourceMap.has(owner)) {
+        resourceMap.get(owner)!.push(st);
+      }
+    }
+
+    // PUT each resource as a named graph
+    for (const [uri, stmts] of resourceMap) {
+      const doc = rdflib.graph();
+      for (const st of stmts) doc.add(st.subject, st.predicate, st.object, doc.sym(uri));
+      const content = await serializeRdf(doc.sym(uri), doc, 'none:', 'text/turtle');
+      await fetch(`${this.jenaURL}data?graph=${encodeURIComponent(uri)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'text/turtle' },
+        body: content,
+      });
+    }
   }
 
   async drop(): Promise<void> {
