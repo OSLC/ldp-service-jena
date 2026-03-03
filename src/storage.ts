@@ -201,6 +201,20 @@ export class JenaStorageService implements StorageService {
     return { status: res.status, results };
   }
 
+  async sparqlQuery(sparql: string, accept: string): Promise<{ status: number; contentType: string; body: string }> {
+    const res = await fetch(`${this.jenaURL}sparql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/sparql-query',
+        Accept: accept,
+      },
+      body: sparql,
+    });
+    const body = await res.text();
+    const contentType = res.headers.get('Content-Type') ?? 'application/sparql-results+json';
+    return { status: res.status, contentType, body };
+  }
+
   async exportDataset(format: 'trig' | 'turtle'): Promise<string> {
     const accept = format === 'trig' ? 'application/trig' : 'text/turtle';
     const endpoint = format === 'trig' ? `${this.jenaURL}data` : `${this.jenaURL}data?default`;
