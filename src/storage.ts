@@ -73,7 +73,7 @@ export class JenaStorageService implements StorageService {
   }
 
   async reserveURI(uri: string): Promise<number> {
-    const res = await fetch(`${this.jenaURL}data?graph=${uri}`, {
+    const res = await fetch(`${this.jenaURL}data?graph=${encodeURIComponent(uri)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/ld+json' },
       body: '{}',
@@ -82,11 +82,11 @@ export class JenaStorageService implements StorageService {
   }
 
   async releaseURI(uri: string): Promise<void> {
-    await fetch(`${this.jenaURL}data?graph=${uri}`, { method: 'DELETE' });
+    await fetch(`${this.jenaURL}data?graph=${encodeURIComponent(uri)}`, { method: 'DELETE' });
   }
 
   async read(uri: string): Promise<{ status: number; document: LdpDocument | null }> {
-    const res = await fetch(`${this.jenaURL}data?graph=${uri}`, {
+    const res = await fetch(`${this.jenaURL}data?graph=${encodeURIComponent(uri)}`, {
       method: 'GET',
       headers: { Accept: 'text/turtle' },
     });
@@ -121,7 +121,7 @@ export class JenaStorageService implements StorageService {
     const content = await serializeRdf(
       resource.sym(resource.uri), resource, 'none:', 'text/turtle'
     );
-    const res = await fetch(`${this.jenaURL}data?graph=${resource.uri}`, {
+    const res = await fetch(`${this.jenaURL}data?graph=${encodeURIComponent(resource.uri)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'text/turtle' },
       body: content,
@@ -162,7 +162,7 @@ export class JenaStorageService implements StorageService {
   }
 
   async remove(uri: string): Promise<number> {
-    const res = await fetch(`${this.jenaURL}data?graph=${uri}`, { method: 'DELETE' });
+    const res = await fetch(`${this.jenaURL}data?graph=${encodeURIComponent(uri)}`, { method: 'DELETE' });
     return res.status;
   }
 
