@@ -1,88 +1,61 @@
 # ldp-service-jena
 
-[![Discourse status](https://img.shields.io/discourse/https/meta.discourse.org/status.svg)](https://forum.open-services.net/)
-[![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)](https://gitter.im/OSLC/chat)
+A `StorageService` implementation that persists RDF graphs in [Apache Jena Fuseki](https://jena.apache.org/documentation/fuseki2/). Each resource is stored as a named graph in a Fuseki dataset, accessed through the SPARQL 1.1 Graph Store Protocol and SPARQL query endpoints.
 
-A simple Node.js module providing Express middleware to create a [W3C Linked Data Platform](http://www.w3.org/2012/ldp) server. The service uses Apache Jena Fuseki for persistence, jsonld.js for JSON-LD support, and a few other JavaScript libraries.  A sample app using the LDP middleware service is running at [http://ldp-app.mybluemix.net](http://ldp-app.mybluemix.net).
+## Prerequisites
 
-ldp-service-jena supports LDP basic and direct containers. Indirect
-containers and non-RDF source are not implemented.
+- Node.js >= 22.11.0
+- Apache Jena Fuseki running with a configured dataset. For example:
 
+```sh
+# In-memory (non-persistent):
+fuseki-server --mem /ldp
 
-Module planning, maintenance and issues can be see at at the [ldp-service](https://hub.jazz.net/project/jamsden/ldp-service/overview) IBM Bluemix DevOps Services project.
+# Persistent with update support:
+fuseki-server --update --loc=<path-to-db> /ldp
+```
 
+## Build
 
-## Using
+```sh
+npm install
+npm run build
+```
 
-1) Install the required modules
+The TypeScript source in `src/` compiles to `dist/`.
 
-Install [Node.js](http://nodejs.org). 
+## Configuration
 
-2) Start [Jena](https://jena.apache.org/download/index.cgi). 
+`JenaStorageService` is initialized with a `StorageEnv` object that must include a `jenaURL` property pointing to the Fuseki dataset endpoint. For example:
 
-Download apache-jena-fuseki-2.4.1.tar.gz under Apache Jena Fuseki and unzip it.
+```json
+{
+  "jenaURL": "http://localhost:3030/ldp/"
+}
+```
 
-To run Jena, enter the following code, providing the path to the datastore:
+The URL should include the trailing slash and the dataset name. Fuseki service endpoints (`data`, `sparql`, `update`) are resolved relative to this base URL.
 
-	$ fuseki-server --mem /ldp
+## What It Does
 
-/ldp is a datastore that allows the request to access the resources on the db. It can be named in any other way. --mem allows for temporary storage of data
-for that instant. For the data to permanently stored, and to update data, the following code should be ran.
+`JenaStorageService` implements the `StorageService` interface from the `storage-service` package, providing:
 
-	$ fuseki-server --update --loc=<path to db> /ldp
+- **CRUD on named graphs** -- `read`, `update`, `remove`, `reserveURI`, and `releaseURI` use the Fuseki Graph Store Protocol (`data` endpoint) to manage individual RDF graphs identified by URI.
+- **Partial graph updates** -- `insertData` and `removeData` issue SPARQL Update requests to add or delete triples within a named graph.
+- **SPARQL queries** -- `constructQuery` returns parsed RDF results; `sparqlQuery` returns raw results in a requested media type; `getMembershipTriples` resolves LDP Direct Container membership.
+- **Dataset export/import** -- `exportDataset` and `importDataset` support TriG (named graphs) and Turtle (single-graph) serialization for backup and migration.
 
---update allows the user to update resources, while --loc tells the location of the stored items for persistence.
+RDF parsing and serialization are handled by `rdflib`.
 
-Install express.js and create a sample express app
+## Architecture
 
-	$ npm install express -g
-	$ express --git -e <appDir>
+This module implements the `StorageService` interface defined in `storage-service`. It is consumed by `ldp-service`, which provides LDP protocol handling as Express middleware. The separation allows `ldp-service` to remain storage-agnostic -- swapping `ldp-service-jena` for another `StorageService` implementation changes the persistence backend without affecting the LDP logic.
 
-3) Edit app.js and add whatever Express middleware you need including ldp-service. ldp-service-jena also provides access to its Apache Jena database in case additional middleware needs direct access to the database.
-
-	var ldpService = require('ldp-service');
-	var env = require('./env.js');
-	app.use(ldpService(env))
-	var db = ldpService.db // incase further middleware needs access to the database
-
-4) Configuration should be speciried in env.js. These may be overridden by variables in the environment, including Bluemix variables if deployed in a Bluemix app.
-
-4) To start the app, run these commands
-
-    $ npm install
-    $ node app.js
-
-Finally, point your browser to
-[http://localhost:3000/](http://localhost:3000/).
-
-
-## Additional Notes
-
-The file db.js uses the 'request' package from npm to perform HTTP requests on Apache Jena Fuseki. It does not directly connect with the database. Rather, it
-finds the location of the Apache Jena db instance using the URI in the configuration.
-
-The code does not have its own resources to upload if there is no root in the database. It loads local 'default services' that are located in the configuration
-file. This is a recursive operation at loads all resources with new URI's. It assumes that the default services are written in JSON-LD.
-
-
-## Example of a env.js File
-
-ldp-service-jena assumes that the environment configuration file provided by applications is written with a certain set of properties. Here is an example.
-
-    {
-		"scheme": "http",
-		"host": "localhost",
-		"port": 3000,
-		"context": "/r",
-		"JenaURL": "http://localhost:3030/ldp/",
-    }
-
+```
+ldp-service  --->  StorageService (interface)  <---  ldp-service-jena (this module)
+                                                <---  storage-service  (other impls)
+```
 
 ## License
 
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and limitations under the License.
+Licensed under the Apache License, Version 2.0. See [LICENSE](http://www.apache.org/licenses/LICENSE-2.0) for details.
