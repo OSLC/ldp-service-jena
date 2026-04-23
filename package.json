@@ -1,5 +1,5 @@
 {
-  "name": "ldp-service-jena",
+  "name": "jena-storage-service",
   "version": "2.0.0",
   "description": "StorageService implementation using Apache Jena/Fuseki",
   "license": "Apache-2.0",

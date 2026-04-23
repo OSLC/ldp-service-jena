@@ -1,4 +1,4 @@
-# ldp-service-jena
+# jena-storage-service
 
 A `StorageService` implementation that persists RDF graphs in [Apache Jena Fuseki](https://jena.apache.org/documentation/fuseki2/). Each resource is stored as a named graph in a Fuseki dataset, accessed through the SPARQL 1.1 Graph Store Protocol and SPARQL query endpoints.
 
@@ -49,10 +49,10 @@ RDF parsing and serialization are handled by `rdflib`.
 
 ## Architecture
 
-This module implements the `StorageService` interface defined in `storage-service`. It is consumed by `ldp-service`, which provides LDP protocol handling as Express middleware. The separation allows `ldp-service` to remain storage-agnostic -- swapping `ldp-service-jena` for another `StorageService` implementation changes the persistence backend without affecting the LDP logic.
+This module implements the `StorageService` interface defined in `storage-service`. It is consumed by `ldp-service`, which provides LDP protocol handling as Express middleware. The separation allows `ldp-service` to remain storage-agnostic -- swapping `jena-storage-service` for another `StorageService` implementation changes the persistence backend without affecting the LDP logic.
 
 ```
-ldp-service  --->  StorageService (interface)  <---  ldp-service-jena (this module)
+ldp-service  --->  StorageService (interface)  <---  jena-storage-service (this module)
                                                 <---  storage-service  (other impls)
 ```
 
