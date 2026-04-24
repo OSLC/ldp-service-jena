@@ -29,6 +29,7 @@ import {
   type StorageEnv,
   type LdpDocument,
   type MemberBinding,
+  type IncomingLink,
   ldp,
 } from 'storage-service';
 
@@ -213,6 +214,61 @@ export class JenaStorageService implements StorageService {
     const body = await res.text();
     const contentType = res.headers.get('Content-Type') ?? 'application/sparql-results+json';
     return { status: res.status, contentType, body };
+  }
+
+  async getIncomingLinks(
+    targetURIs: string[],
+    predicates?: string[]
+  ): Promise<IncomingLink[]> {
+    if (targetURIs.length === 0) return [];
+
+    const values = targetURIs.map(u => `<${u}>`).join(' ');
+    let sparql = `SELECT ?s ?p ?o WHERE {\n`;
+    sparql += `  VALUES ?o { ${values} }\n`;
+    sparql += `  ?s ?p ?o .\n`;
+
+    // Exclude infrastructure predicates — callers want domain links,
+    // not housekeeping triples that the server injects on every resource.
+    sparql += `  FILTER(?p != <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)\n`;
+    sparql += `  FILTER(?p != <http://www.w3.org/ns/ldp#contains>)\n`;
+    sparql += `  FILTER(?p != <http://www.w3.org/ns/ldp#member>)\n`;
+    sparql += `  FILTER(?p != <http://open-services.net/ns/core#serviceProvider>)\n`;
+    sparql += `  FILTER(?p != <http://open-services.net/ns/core#instanceShape>)\n`;
+
+    if (predicates && predicates.length > 0) {
+      const pValues = predicates.map(p => `<${p}>`).join(' ');
+      sparql += `  VALUES ?p { ${pValues} }\n`;
+    }
+
+    sparql += `}`;
+
+    const res = await fetch(`${this.jenaURL}sparql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/sparql-query',
+        Accept: 'application/sparql-results+json',
+      },
+      body: sparql,
+    });
+
+    if (res.status !== 200) return [];
+
+    const json = (await res.json()) as {
+      results?: { bindings?: Array<{
+        s?: { value: string };
+        p?: { value: string };
+        o?: { value: string };
+      }> };
+    };
+
+    const bindings = json.results?.bindings ?? [];
+    return bindings
+      .filter(b => b.s && b.p && b.o)
+      .map(b => ({
+        sourceURI: b.s!.value,
+        predicate: b.p!.value,
+        targetURI: b.o!.value,
+      }));
   }
 
   async exportDataset(format: 'trig' | 'turtle'): Promise<string> {
